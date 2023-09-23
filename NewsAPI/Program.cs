@@ -8,10 +8,18 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<IItemService, ItemService>();
-builder.Services.AddScoped<HttpClient, HttpClient>();
+builder.Services.AddSingleton<IItemService, ItemService>();
+builder.Services.AddSingleton<HttpClient, HttpClient>();
+builder.Services.AddMemoryCache();
 
 var app = builder.Build();
+
+// Obtiene una instancia de ItemService desde el contenedor de servicios
+var itemService = app.Services.GetRequiredService<IItemService>();
+
+// Llama a GetNewestStoriesAsync
+await itemService.GetNewestStoriesAsync();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -27,3 +35,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+

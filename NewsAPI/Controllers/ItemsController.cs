@@ -18,16 +18,17 @@ namespace NewsAPI.Controllers
 
         // GET: api/<ValuesController>
         [HttpGet]
-        public IEnumerable<string> GetItem()
+        public async Task<IActionResult> GetItem()
         {
-            return new string[] { "value1", "value2" };
+            var result = await _itemService.GetNewestStoriesAsync();
+            return Ok(result);
         }
 
         // GET api/<ValuesController>/5
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            var result = _itemService.GetItemDetail(id);
+            var result = await _itemService.GetItemDetailAsync(id);
             return Ok(result);
         }
 

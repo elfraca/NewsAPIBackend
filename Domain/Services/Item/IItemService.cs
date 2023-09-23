@@ -4,6 +4,7 @@ namespace Domain.Services.Item
 {
     public interface IItemService
     {
-        public ItemEntity GetItemDetail(int itemId);
+        public Task<ItemEntity> GetItemDetailAsync(int itemId);
+        public Task<List<ItemEntity>> GetNewestStoriesAsync();
     }
 }

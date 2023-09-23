@@ -4,7 +4,7 @@ namespace Domain.Data
 {
     public class User
     {
-        public int UserId { get; set; }
+        public int Id { get; set; }
         private static DateTimeOffset createdFullDate { get; set; }
         public long CreatedUnixDate { get; } = createdFullDate.ToUnixTimeSeconds();
         public int Karma { get; set; }
