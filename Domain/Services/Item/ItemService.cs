@@ -37,10 +37,10 @@ namespace Domain.Services.Item
             }
         }
 
-        public async Task<List<ItemEntity>> GetNewestStoriesAsync()
+        public async Task<List<ItemEntity>> GetNewestStoriesAsync(int page = 1, int pageSize = 10)
         {
-            List<ItemEntity> itemsCache = new List<ItemEntity>();
-            List<int> newsList = new List<int>();
+            List<ItemEntity> itemsCache;
+            List<int> newsList;
 
             itemsCache = _memoryCache.Get<List<ItemEntity>>("topitems");
             newsList = _memoryCache.Get<List<int>>("topids");
@@ -91,7 +91,14 @@ namespace Domain.Services.Item
                 
             }
 
-            return itemsCache ;
+            var totalCount = itemsCache.Count;
+            var totalPages = (int)Math.Ceiling((decimal)totalCount / pageSize);
+            var itemsPerPages = itemsCache
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return itemsPerPages ;
         }
 
     }

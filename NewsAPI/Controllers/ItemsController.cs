@@ -18,9 +18,9 @@ namespace NewsAPI.Controllers
 
         // GET: api/<ValuesController>
         [HttpGet]
-        public async Task<IActionResult> GetItem()
+        public async Task<IActionResult> GetItem(int page = 1, int pageSize = 10)
         {
-            var result = await _itemService.GetNewestStoriesAsync();
+            var result = await _itemService.GetNewestStoriesAsync(page, pageSize);
             return Ok(result);
         }
 
