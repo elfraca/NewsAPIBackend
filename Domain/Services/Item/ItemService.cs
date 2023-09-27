@@ -40,70 +40,89 @@ namespace Domain.Services.Item
 
         public async Task<List<ItemEntity>> GetNewestStoriesAsync(int page = 1, int pageSize = 10)
         {
-            List<ItemEntity> itemsCache;
-            List<int> newsList;
+            List<ItemEntity> itemsListCache;
+            List<int> newsIdsList;
 
-            itemsCache = _memoryCache.Get<List<ItemEntity>>("topitems");
-            newsList = _memoryCache.Get<List<int>>("topids");
+            itemsListCache = _memoryCache.Get<List<ItemEntity>>("topitems");
+            newsIdsList = _memoryCache.Get<List<int>>("topids");
 
-            if (itemsCache is null)
+            if (itemsListCache is null)
             {
                 ConcurrentBag<ItemEntity> bag = new ConcurrentBag<ItemEntity>();
                 var response = await _httpClient.GetAsync($"topstories.json");
                 var content = await response.Content.ReadAsStringAsync();
-                newsList = JsonConvert.DeserializeObject<List<int>>(content);
-                _memoryCache.Set("topids", newsList);
+                newsIdsList = JsonConvert.DeserializeObject<List<int>>(content);
+                _memoryCache.Set("topids", newsIdsList);
 
-                itemsCache = new List<ItemEntity>();
+                itemsListCache = new List<ItemEntity>();
 
-                var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = 4 };
-                await Parallel.ForEachAsync(newsList, optionsParallel, async (news, token) =>
+                var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = 8 };
+                await Parallel.ForEachAsync(newsIdsList, optionsParallel, async (news, token) =>
                 {
                     ItemEntity item = await GetItemDetailAsync( news );
                     bag.Add(item);
                 });
 
-                itemsCache = bag.ToList();
+                itemsListCache = bag.ToList();
 
-                _memoryCache.Set("topitems", itemsCache);
+                _memoryCache.Set("topitems", itemsListCache);
             }
             else
             {
+                ConcurrentBag<ItemEntity> bag = new ConcurrentBag<ItemEntity>();
                 var response = await _httpClient.GetAsync($"topstories.json");
                 var content = await response.Content.ReadAsStringAsync();
                 List<int> topNewsItems = JsonConvert.DeserializeObject<List<int>>( content );
-                newsList = _memoryCache.Get<List<int>>("topids");
-                if (!(newsList.Count == topNewsItems.Count && newsList.All(topNewsItems.Contains)))
+                newsIdsList = _memoryCache.Get<List<int>>("topids");
+                if (!(newsIdsList.Count == topNewsItems.Count && newsIdsList.All(topNewsItems.Contains)))
                 {
-                    foreach (var item in itemsCache)
+                    var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = 4 };
+                    await Parallel.ForEachAsync(itemsListCache, optionsParallel, async (item, token) =>
                     {
                         if (!topNewsItems.Contains(item.Id))
                         {
-                            itemsCache.Remove(item);
+                            bag.Add(item);
                         }
-                    }
-
-                    foreach (var topitem in topNewsItems)
+                    });
+                    if (bag.Count != 0)
                     {
-                        if (itemsCache.Any(x => x.Id == topitem))
+                        foreach (var item in bag)
                         {
-                            ItemEntity item = await GetItemDetailAsync(topitem);
-                            itemsCache.Add(item);
+                            itemsListCache.Remove(item);
                         }
                     }
-                    _memoryCache.Set("topitems", itemsCache);
+                    
+
+                    bag = new ConcurrentBag<ItemEntity>();
+                    await Parallel.ForEachAsync(topNewsItems, optionsParallel, async (item, token) =>
+                    {
+                        if (!itemsListCache.Any(x => x.Id == item))
+                        {
+                            ItemEntity newitem = await GetItemDetailAsync(item);
+                            bag.Add(newitem);
+                        }
+                    });
+                    if (bag.Count != 0)
+                    {
+                        foreach (var item in bag)
+                        {
+                            itemsListCache.Add(item);
+                        }
+                    }
+                    
+                    _memoryCache.Set("topitems", itemsListCache);
                 }
                 
             }
 
-            var totalCount = itemsCache.Count;
+            var totalCount = itemsListCache.Count;
             var totalPages = (int)Math.Ceiling((decimal)totalCount / pageSize);
-            var itemsPerPages = itemsCache
+            var itemsPerPages = itemsListCache
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            return itemsPerPages ;
+            return itemsPerPages;
         }
 
     }
