@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Domain.Data;
 using System.Reflection.Metadata.Ecma335;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Domain.Services.Item
 {
@@ -47,6 +48,7 @@ namespace Domain.Services.Item
 
             if (itemsCache is null)
             {
+                ConcurrentBag<ItemEntity> bag = new ConcurrentBag<ItemEntity>();
                 var response = await _httpClient.GetAsync($"topstories.json");
                 var content = await response.Content.ReadAsStringAsync();
                 newsList = JsonConvert.DeserializeObject<List<int>>(content);
@@ -54,11 +56,14 @@ namespace Domain.Services.Item
 
                 itemsCache = new List<ItemEntity>();
 
-                foreach ( var news in newsList ) 
+                var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = 4 };
+                await Parallel.ForEachAsync(newsList, optionsParallel, async (news, token) =>
                 {
                     ItemEntity item = await GetItemDetailAsync( news );
-                    itemsCache.Add(item);
-                }
+                    bag.Add(item);
+                });
+
+                itemsCache = bag.ToList();
 
                 _memoryCache.Set("topitems", itemsCache);
             }
