@@ -6,6 +6,7 @@ using Domain.Data;
 using System.Reflection.Metadata.Ecma335;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections;
 
 namespace Domain.Services.Item
 {
@@ -23,7 +24,7 @@ namespace Domain.Services.Item
         }
 
 
-        public async Task<ItemEntity> GetItemDetailAsync(int itemId)
+        public async Task<ItemEntity?> GetItemDetailAsync(int itemId)
         {
             var response = await _httpClient.GetAsync($"item/{itemId}.json");
             if (response.IsSuccessStatusCode)
@@ -40,90 +41,120 @@ namespace Domain.Services.Item
 
         public async Task<List<ItemEntity>> GetNewestStoriesAsync(int page = 1, int pageSize = 10)
         {
-            List<ItemEntity> itemsListCache;
-            List<int> newsIdsList;
+            List<int> newsIdsListCache;
+            ConcurrentDictionary<int, ItemEntity> itemsDictionary;
+            Dictionary<int, ItemEntity>? returnDictionary;
 
-            itemsListCache = _memoryCache.Get<List<ItemEntity>>("topitems");
-            newsIdsList = _memoryCache.Get<List<int>>("topids");
+            returnDictionary = _memoryCache.Get<Dictionary<int, ItemEntity>>("newstories");
+            newsIdsListCache = _memoryCache.Get<List<int>>("newscacheid");
 
-            if (itemsListCache is null)
+            if (returnDictionary is null)
             {
-                ConcurrentBag<ItemEntity> bag = new ConcurrentBag<ItemEntity>();
-                var response = await _httpClient.GetAsync($"topstories.json");
-                var content = await response.Content.ReadAsStringAsync();
-                newsIdsList = JsonConvert.DeserializeObject<List<int>>(content);
-                _memoryCache.Set("topids", newsIdsList);
-
-                itemsListCache = new List<ItemEntity>();
-
-                var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = 8 };
-                await Parallel.ForEachAsync(newsIdsList, optionsParallel, async (news, token) =>
-                {
-                    ItemEntity item = await GetItemDetailAsync( news );
-                    bag.Add(item);
-                });
-
-                itemsListCache = bag.ToList();
-
-                _memoryCache.Set("topitems", itemsListCache);
+                itemsDictionary = new ConcurrentDictionary<int, ItemEntity>();
+                returnDictionary = await LoadCache(itemsDictionary, returnDictionary, newsIdsListCache);
             }
             else
             {
-                ConcurrentBag<ItemEntity> bag = new ConcurrentBag<ItemEntity>();
-                var response = await _httpClient.GetAsync($"topstories.json");
-                var content = await response.Content.ReadAsStringAsync();
-                List<int> topNewsItems = JsonConvert.DeserializeObject<List<int>>( content );
-                newsIdsList = _memoryCache.Get<List<int>>("topids");
-                if (!(newsIdsList.Count == topNewsItems.Count && newsIdsList.All(topNewsItems.Contains)))
-                {
-                    var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = 4 };
-                    await Parallel.ForEachAsync(itemsListCache, optionsParallel, async (item, token) =>
-                    {
-                        if (!topNewsItems.Contains(item.Id))
-                        {
-                            bag.Add(item);
-                        }
-                    });
-                    if (bag.Count != 0)
-                    {
-                        foreach (var item in bag)
-                        {
-                            itemsListCache.Remove(item);
-                        }
-                    }
-                    
+                itemsDictionary = new ConcurrentDictionary<int, ItemEntity>();
+                await UpdateCache(itemsDictionary, returnDictionary, newsIdsListCache);
 
-                    bag = new ConcurrentBag<ItemEntity>();
-                    await Parallel.ForEachAsync(topNewsItems, optionsParallel, async (item, token) =>
-                    {
-                        if (!itemsListCache.Any(x => x.Id == item))
-                        {
-                            ItemEntity newitem = await GetItemDetailAsync(item);
-                            bag.Add(newitem);
-                        }
-                    });
-                    if (bag.Count != 0)
-                    {
-                        foreach (var item in bag)
-                        {
-                            itemsListCache.Add(item);
-                        }
-                    }
-                    
-                    _memoryCache.Set("topitems", itemsListCache);
-                }
-                
             }
-
-            var totalCount = itemsListCache.Count;
-            var totalPages = (int)Math.Ceiling((decimal)totalCount / pageSize);
-            var itemsPerPages = itemsListCache
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+            List<ItemEntity> itemsPerPages = PaginationPhase(page, pageSize, returnDictionary);
 
             return itemsPerPages;
         }
 
+        private static Dictionary<int, ItemEntity> CheckAndRemoveFromDictionary(ConcurrentDictionary<int, ItemEntity> itemsDictionary, List<int> newsIdsListIncome, IEnumerable<int> listToRemove)
+        {
+            Dictionary<int, ItemEntity>? returnDictionary;
+            Dictionary<int, ItemEntity> removeDictionary = itemsDictionary.ToDictionary(pair => pair.Key, pair => pair.Value);
+            foreach (var item in listToRemove)
+            {
+                if (!newsIdsListIncome.Contains(item))
+                {
+                    removeDictionary.Remove(item);
+                }
+            }
+            returnDictionary = removeDictionary;
+            return returnDictionary;
+        }
+
+        private async Task CheckAndAddToDictionary(ConcurrentDictionary<int, ItemEntity> itemsDictionary, Dictionary<int, ItemEntity>? returnDictionary, List<int> newsIdsListIncome)
+        {
+            var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 };
+            await Parallel.ForEachAsync(newsIdsListIncome, optionsParallel, async (newItem, token) =>
+            {
+                if (!returnDictionary.ContainsKey(newItem))
+                {
+                    ItemEntity item = await GetItemDetailAsync(newItem);
+                    itemsDictionary.AddOrUpdate(item.Id,
+                        addValueFactory: k => item,
+                        updateValueFactory: (k, existingItem) => existingItem);
+                }
+            });
+        }
+
+        private async Task<List<int>> GetHttpCall(List<int> newsIdsListCache, string endpoint)
+        {
+            var response = await _httpClient.GetAsync($"{endpoint}.json");
+            var content = await response.Content.ReadAsStringAsync();
+            newsIdsListCache = JsonConvert.DeserializeObject<List<int>>(content);
+            return newsIdsListCache;
+        }
+
+        private async Task AddToDictionary(List<int> newsIdsListCache, ConcurrentDictionary<int, ItemEntity> itemsDictionary)
+        {
+            var optionsParallel = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 };
+            await Parallel.ForEachAsync(newsIdsListCache, optionsParallel, async (news, token) =>
+            {
+                ItemEntity item = await GetItemDetailAsync(news);
+                itemsDictionary.AddOrUpdate(item.Id,
+                    addValueFactory: k => item,
+                    updateValueFactory: (k, existingItem) => item);
+            });
+        }
+
+        private static List<ItemEntity> PaginationPhase(int page, int pageSize, Dictionary<int, ItemEntity> itemsDictionary)
+        {
+            var listToReturn = itemsDictionary.Values.ToList();
+            var totalCount = listToReturn.Count;
+            var totalPages = (int)Math.Ceiling((decimal)totalCount / pageSize);
+            var itemsPerPages = listToReturn
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+            return itemsPerPages;
+        }
+
+        private async Task<Dictionary<int,ItemEntity>> LoadCache(ConcurrentDictionary<int, ItemEntity> concurrentDictionary, Dictionary<int, ItemEntity> returnDictionary, List<int> newsIdsListCache)
+        {
+            newsIdsListCache = await GetHttpCall(newsIdsListCache, "newstories");
+
+            _memoryCache.Set("newscacheid", newsIdsListCache);
+
+            await AddToDictionary(newsIdsListCache, concurrentDictionary);
+
+            returnDictionary = concurrentDictionary.ToDictionary(pair => pair.Key, pair => pair.Value);
+            _memoryCache.Set("newstories", returnDictionary);
+            return returnDictionary;
+        } 
+
+        private async Task UpdateCache(ConcurrentDictionary<int, ItemEntity> itemsDictionary, Dictionary<int, ItemEntity> returnDictionary, List<int> newsIdsListCache)
+        {
+            List<int> newsIdsListIncome = new List<int>();
+            newsIdsListIncome = await GetHttpCall(newsIdsListIncome, "newstories");
+
+            newsIdsListCache = _memoryCache.Get<List<int>>("newscacheid");
+            if (!(newsIdsListCache.Count == newsIdsListIncome.Count && newsIdsListCache.All(newsIdsListIncome.Contains)))
+            {
+                itemsDictionary = new ConcurrentDictionary<int, ItemEntity>(returnDictionary);
+                await CheckAndAddToDictionary(itemsDictionary, returnDictionary, newsIdsListIncome);
+
+                var listToRemove = newsIdsListCache.Except(newsIdsListIncome);
+                returnDictionary = CheckAndRemoveFromDictionary(itemsDictionary, newsIdsListIncome, listToRemove);
+
+                _memoryCache.Set("newstories", returnDictionary);
+            }
+        }
     }
 }

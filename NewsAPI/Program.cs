@@ -11,6 +11,12 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<IItemService, ItemService>();
 builder.Services.AddSingleton<HttpClient, HttpClient>();
 builder.Services.AddMemoryCache();
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowOrigin",
+    builder => builder.WithOrigins("http://localhost:4200")
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+});
 
 var app = builder.Build();
 
@@ -27,6 +33,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("AllowOrigin");
 
 app.UseHttpsRedirection();
 
