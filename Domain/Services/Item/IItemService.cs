@@ -6,6 +6,6 @@ namespace Domain.Services.Item
     public interface IItemService
     {
         public Task<ItemEntity> GetItemDetailAsync(int itemId);
-        public Task<List<ItemEntity>> GetNewestStoriesAsync(SearchRequest searchRequest);
+        public Task<SearchResponse<List<ItemEntity>>> GetNewestStoriesAsync(SearchRequest searchRequest);
     }
 }

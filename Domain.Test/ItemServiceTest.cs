@@ -1,4 +1,5 @@
 using Domain.Services.Item;
+using Models;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
 
@@ -19,9 +20,12 @@ namespace Domain.ItemServiceTest
         }
 
         [Test]
-        public void Test1()
+        public async Task GetNewestStoriesAsync()
         {
-            Assert.Pass();
+            SearchRequest searchrequest = new SearchRequest();
+            var result = await _itemService.GetNewestStoriesAsync(searchrequest);
+
+            Assert.NotNull(result);
         }
     }
 }

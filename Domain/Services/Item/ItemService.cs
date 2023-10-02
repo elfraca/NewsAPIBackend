@@ -36,7 +36,7 @@ namespace Domain.Services.Item
             }
         }
 
-        public async Task<List<ItemEntity>> GetNewestStoriesAsync(SearchRequest searchRequest)
+        public async Task<SearchResponse<List<ItemEntity>>> GetNewestStoriesAsync(SearchRequest searchRequest)
         {
             List<int> newsIdsListCache;
             ConcurrentDictionary<int, ItemEntity> itemsDictionary;
@@ -61,7 +61,7 @@ namespace Domain.Services.Item
                 FilterPhase(searchRequest, returnDictionary);
             }
 
-            List<ItemEntity> itemsPerPages = PaginationPhase(searchRequest.page, searchRequest.pageSize, returnDictionary);
+            SearchResponse<List<ItemEntity>> itemsPerPages = PaginationPhase(searchRequest.page, searchRequest.pageSize, returnDictionary);
 
             return itemsPerPages;
         }
@@ -119,7 +119,7 @@ namespace Domain.Services.Item
             });
         }
 
-        private static List<ItemEntity> PaginationPhase(int page, int pageSize, Dictionary<int, ItemEntity> itemsDictionary)
+        private static SearchResponse<List<ItemEntity>> PaginationPhase(int page, int pageSize, Dictionary<int, ItemEntity> itemsDictionary)
         {
             var listToReturn = itemsDictionary.Values.ToList();
             var totalCount = listToReturn.Count;
@@ -128,7 +128,7 @@ namespace Domain.Services.Item
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
-            return itemsPerPages;
+            return new SearchResponse<List<ItemEntity>> {totalPages = totalPages, Data = itemsPerPages };
         }
 
         private async Task<Dictionary<int,ItemEntity>> LoadCache(ConcurrentDictionary<int, ItemEntity> concurrentDictionary, Dictionary<int, ItemEntity> returnDictionary, List<int> newsIdsListCache)
