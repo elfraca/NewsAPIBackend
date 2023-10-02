@@ -1,5 +1,6 @@
 ﻿using Domain.Services.Item;
 using Microsoft.AspNetCore.Mvc;
+using Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -17,10 +18,10 @@ namespace NewsAPI.Controllers
         }
 
         // GET: api/<ValuesController>
-        [HttpGet]
-        public async Task<IActionResult> GetItem(int page = 1, int pageSize = 10)
+        [HttpPost("paged-search")]
+        public async Task<IActionResult> GetItem([FromBody] SearchRequest searchRequest)
         {
-            var result = await _itemService.GetNewestStoriesAsync(page, pageSize);
+            var result = await _itemService.GetNewestStoriesAsync(searchRequest);
             return Ok(result);
         }
 

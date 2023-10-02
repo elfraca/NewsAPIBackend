@@ -24,7 +24,7 @@ var app = builder.Build();
 var itemService = app.Services.GetRequiredService<IItemService>();
 
 // Llama a GetNewestStoriesAsync
-await itemService.GetNewestStoriesAsync();
+await itemService.GetNewestStoriesAsync(new Models.SearchRequest());
 
 
 // Configure the HTTP request pipeline.

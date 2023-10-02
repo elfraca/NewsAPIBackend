@@ -2,11 +2,8 @@
 using Domain.Helper;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Caching.Memory;
-using Domain.Data;
-using System.Reflection.Metadata.Ecma335;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Collections;
+using Models;
 
 namespace Domain.Services.Item
 {
@@ -39,7 +36,7 @@ namespace Domain.Services.Item
             }
         }
 
-        public async Task<List<ItemEntity>> GetNewestStoriesAsync(int page = 1, int pageSize = 10)
+        public async Task<List<ItemEntity>> GetNewestStoriesAsync(SearchRequest searchRequest)
         {
             List<int> newsIdsListCache;
             ConcurrentDictionary<int, ItemEntity> itemsDictionary;
@@ -59,14 +56,23 @@ namespace Domain.Services.Item
                 await UpdateCache(itemsDictionary, returnDictionary, newsIdsListCache);
 
             }
-            List<ItemEntity> itemsPerPages = PaginationPhase(page, pageSize, returnDictionary);
+            if (!string.IsNullOrEmpty(searchRequest.searchTerm))
+            {
+                FilterPhase(searchRequest, returnDictionary);
+            }
+
+            List<ItemEntity> itemsPerPages = PaginationPhase(searchRequest.page, searchRequest.pageSize, returnDictionary);
 
             return itemsPerPages;
         }
 
+        private static void FilterPhase(SearchRequest searchRequest, Dictionary<int, ItemEntity>? returnDictionary)
+        {
+            returnDictionary.Where(item => item.Value.Title.Contains(searchRequest.searchTerm) || item.Value.Url.Contains(searchRequest.searchTerm) || item.Value.By.Contains(searchRequest.searchTerm));
+        }
+
         private static Dictionary<int, ItemEntity> CheckAndRemoveFromDictionary(ConcurrentDictionary<int, ItemEntity> itemsDictionary, List<int> newsIdsListIncome, IEnumerable<int> listToRemove)
         {
-            Dictionary<int, ItemEntity>? returnDictionary;
             Dictionary<int, ItemEntity> removeDictionary = itemsDictionary.ToDictionary(pair => pair.Key, pair => pair.Value);
             foreach (var item in listToRemove)
             {
@@ -75,8 +81,7 @@ namespace Domain.Services.Item
                     removeDictionary.Remove(item);
                 }
             }
-            returnDictionary = removeDictionary;
-            return returnDictionary;
+            return removeDictionary;
         }
 
         private async Task CheckAndAddToDictionary(ConcurrentDictionary<int, ItemEntity> itemsDictionary, Dictionary<int, ItemEntity>? returnDictionary, List<int> newsIdsListIncome)
