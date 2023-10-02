@@ -19,7 +19,7 @@ namespace NewsAPI.Controllers
 
         // GET: api/<ValuesController>
         [HttpPost("paged-search")]
-        public async Task<IActionResult> GetItem([FromBody] SearchRequest searchRequest)
+        public async Task<IActionResult> GetPaginatedItems([FromBody] SearchRequest searchRequest)
         {
             var result = await _itemService.GetNewestStoriesAsync(searchRequest);
             return Ok(result);
@@ -27,7 +27,7 @@ namespace NewsAPI.Controllers
 
         // GET api/<ValuesController>/5
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get(int id)
+        public async Task<IActionResult> GetById(int id)
         {
             var result = await _itemService.GetItemDetailAsync(id);
             return Ok(result);

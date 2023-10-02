@@ -2,6 +2,7 @@ using Domain.Services.Item;
 using Models;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
+using ItemEntity = Domain.Data.Item;
 
 namespace Domain.ItemServiceTest
 {
@@ -20,9 +21,23 @@ namespace Domain.ItemServiceTest
         }
 
         [Test]
-        public async Task GetNewestStoriesAsync()
+        public async Task GetNewestStoriesAsync_WithEmptyCache_ReturnsFullList()
         {
             SearchRequest searchrequest = new SearchRequest();
+
+            Mock<ICacheEntry> cacheEntry = new Mock<ICacheEntry>();
+
+            Dictionary<int, ItemEntity> setDictionary = new Dictionary<int, ItemEntity>();
+            List<int> idList = new List<int>();
+
+            _memoryCache.Setup(cache => cache.TryGetValue("newstories", out It.Ref<object>.IsAny))
+                   .Returns(true);
+            _memoryCache.Setup(cache => cache.TryGetValue("newscacheid", out It.Ref<object>.IsAny))
+                   .Returns(true);
+            _memoryCache.Setup(cache => cache.CreateEntry("newscacheid")).Returns(cacheEntry.Object);
+            _memoryCache.Setup(cache => cache.CreateEntry("newstories")).Returns(cacheEntry.Object);
+
+
             var result = await _itemService.GetNewestStoriesAsync(searchrequest);
 
             Assert.NotNull(result);
