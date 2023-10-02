@@ -42,5 +42,16 @@ namespace Domain.ItemServiceTest
 
             Assert.NotNull(result);
         }
+
+        [Test]
+        public async Task GetItemId_With_ReturnsItem()
+        {
+            Random random = new Random();
+            int randomNumber = random.Next(1, 38000);
+
+            var result = await _itemService.GetItemDetailAsync( randomNumber );
+
+            Assert.NotNull(result);
+        }
     }
 }

@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Domain", "Domain\Domain.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Domain.Test", "Domain.Test\Domain.Test.csproj", "{47FE034C-2C5A-4DC5-ADF9-5C64DD3CC824}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Models", "Models\Models.csproj", "{C8880540-D0E9-4E4D-A05C-506BA3355BE7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "Models\Models.csproj", "{C8880540-D0E9-4E4D-A05C-506BA3355BE7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewsAPI.Test", "NewsAPI.Test\NewsAPI.Test.csproj", "{5D852EC8-D05D-45D3-982F-9B3ACC4E3E80}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{C8880540-D0E9-4E4D-A05C-506BA3355BE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C8880540-D0E9-4E4D-A05C-506BA3355BE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C8880540-D0E9-4E4D-A05C-506BA3355BE7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D852EC8-D05D-45D3-982F-9B3ACC4E3E80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D852EC8-D05D-45D3-982F-9B3ACC4E3E80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D852EC8-D05D-45D3-982F-9B3ACC4E3E80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D852EC8-D05D-45D3-982F-9B3ACC4E3E80}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -17,7 +17,6 @@ namespace NewsAPI.Controllers
             _itemService = itemService;
         }
 
-        // GET: api/<ValuesController>
         [HttpPost("paged-search")]
         public async Task<IActionResult> GetPaginatedItems([FromBody] SearchRequest searchRequest)
         {
@@ -25,30 +24,11 @@ namespace NewsAPI.Controllers
             return Ok(result);
         }
 
-        // GET api/<ValuesController>/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _itemService.GetItemDetailAsync(id);
             return Ok(result);
-        }
-
-        // POST api/<ValuesController>
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
-        }
-
-        // PUT api/<ValuesController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/<ValuesController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
         }
     }
 }
