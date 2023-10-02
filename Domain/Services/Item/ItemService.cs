@@ -56,19 +56,25 @@ namespace Domain.Services.Item
                 await UpdateCache(itemsDictionary, returnDictionary, newsIdsListCache);
 
             }
+            List<ItemEntity> returnList = returnDictionary.Values.ToList();
             if (!string.IsNullOrEmpty(searchRequest.searchTerm))
             {
-                FilterPhase(searchRequest, returnDictionary);
+                returnList = FilterPhase(searchRequest, returnList);
             }
 
-            SearchResponse<List<ItemEntity>> itemsPerPages = PaginationPhase(searchRequest.page, searchRequest.pageSize, returnDictionary);
+            SearchResponse<List<ItemEntity>> itemsPerPages = PaginationPhase(searchRequest.page, searchRequest.pageSize, returnList);
 
             return itemsPerPages;
         }
 
-        private static void FilterPhase(SearchRequest searchRequest, Dictionary<int, ItemEntity>? returnDictionary)
+        private static List<ItemEntity> FilterPhase(SearchRequest searchRequest, List<ItemEntity> listToFilter)
         {
-            returnDictionary.Where(item => item.Value.Title.Contains(searchRequest.searchTerm) || item.Value.Url.Contains(searchRequest.searchTerm) || item.Value.By.Contains(searchRequest.searchTerm));
+            var trimedSearchTerm = searchRequest.searchTerm.Trim();
+            listToFilter = listToFilter.Where(item =>
+                (item.Title != null && item.Title.Contains(trimedSearchTerm))
+                || (item.Url != null && item.Url.Contains(trimedSearchTerm))
+                || (item.By != null && item.By.Contains(trimedSearchTerm))).ToList();
+            return listToFilter;
         }
 
         private static Dictionary<int, ItemEntity> CheckAndRemoveFromDictionary(ConcurrentDictionary<int, ItemEntity> itemsDictionary, List<int> newsIdsListIncome, IEnumerable<int> listToRemove)
@@ -119,9 +125,8 @@ namespace Domain.Services.Item
             });
         }
 
-        private static SearchResponse<List<ItemEntity>> PaginationPhase(int page, int pageSize, Dictionary<int, ItemEntity> itemsDictionary)
+        private static SearchResponse<List<ItemEntity>> PaginationPhase(int page, int pageSize, List<ItemEntity> listToReturn)
         {
-            var listToReturn = itemsDictionary.Values.ToList();
             var totalCount = listToReturn.Count;
             var totalPages = (int)Math.Ceiling((decimal)totalCount / pageSize);
             var itemsPerPages = listToReturn
